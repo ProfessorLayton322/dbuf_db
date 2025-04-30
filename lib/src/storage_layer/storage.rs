@@ -10,7 +10,7 @@ use super::utils::{load, save};
 pub const DEFAULT_PAGE: PageId = 100;
 const STATE_INDEX: PageId = 0;
 
-#[derive(Encode, Decode)]
+#[derive(Debug, Encode, Decode)]
 pub struct StorageState {
     pub page_size: usize,
     pub next_page_id: PageId,
@@ -18,12 +18,13 @@ pub struct StorageState {
     pub free_ids: std::collections::VecDeque<PageId>,
 }
 
+#[derive(Debug)]
 pub struct Storage {
     pub marble: Marble,
     pub state: StorageState,
 }
 
-//TODO refactor encoding and decoding into generic fn
+//TODO write a batched writer wrapper to save time writing on disk
 impl Storage {
     /// Create a new storage manager
     /// page_size is ignored if state was already written down
@@ -48,6 +49,14 @@ impl Storage {
     fn save_state(&self) -> Result<(), StorageError> {
         save(&self.marble, &self.state, STATE_INDEX)?;
         Ok(())
+    }
+
+    pub fn page_size(&self) -> usize {
+        self.state.page_size
+    }
+
+    pub fn marble(&self) -> &Marble {
+        &self.marble
     }
 
     pub fn allocate_id(&mut self) -> Result<PageId, StorageError> {

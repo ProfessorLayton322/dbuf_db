@@ -9,6 +9,7 @@ use std::path::Path;
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashMap;
 
+#[derive(Debug)]
 pub struct BufferPool {
     storage: Storage,
     //pages are refcell bc they are a cache that is modified by read ops
@@ -47,6 +48,10 @@ impl BufferPool {
 
     pub fn storage(&self) -> &Storage {
         &self.storage
+    }
+
+    pub fn storage_mut(&mut self) -> &mut Storage {
+        &mut self.storage
     }
 
     fn pop_page(&self) -> Result<(), StorageError> {

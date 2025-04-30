@@ -6,7 +6,6 @@ pub type PageId = u64;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Encode, Decode)]
 pub enum PageType {
     TableData,
-    IndexData,
     Free,
 }
 

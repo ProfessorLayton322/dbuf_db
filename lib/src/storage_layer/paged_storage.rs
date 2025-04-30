@@ -8,6 +8,7 @@ use marble::Marble;
 
 use std::path::Path;
 
+#[derive(Debug)]
 pub struct PagedStorage {
     buffer_pool: BufferPool,
 }
@@ -32,6 +33,14 @@ impl PagedStorage {
 
     pub fn storage(&self) -> &Storage {
         self.buffer_pool.storage()
+    }
+
+    pub fn buffer_pool(&self) -> &BufferPool {
+        &self.buffer_pool
+    }
+
+    pub fn storage_mut(&mut self) -> &mut Storage {
+        self.buffer_pool.storage_mut()
     }
 
     pub fn allocate_page(
@@ -99,6 +108,13 @@ impl PagedStorage {
     pub fn set_obj_count(&mut self, page_id: PageId, obj_count: usize) -> Result<(), StorageError> {
         let mut page = self.buffer_pool.get_page_mut(page_id)?;
         page.0.header.obj_count = obj_count;
+
+        Ok(())
+    }
+
+    pub fn bump_obj_count(&mut self, page_id: PageId) -> Result<(), StorageError> {
+        let mut page = self.buffer_pool.get_page_mut(page_id)?;
+        page.0.header.obj_count += 1;
 
         Ok(())
     }
