@@ -30,17 +30,17 @@ mod tests {
             columns: vec![
                 Column {
                     column_name: "First".to_owned(),
-                    column_type: ColumnType::UInt,
+                    column_type: DBType::UInt,
                     dependencies: vec![],
                 },
                 Column {
                     column_name: "Second".to_owned(),
-                    column_type: ColumnType::Bool,
+                    column_type: DBType::Bool,
                     dependencies: vec![],
                 },
                 Column {
                     column_name: "Third".to_owned(),
-                    column_type: ColumnType::String,
+                    column_type: DBType::String,
                     dependencies: vec![],
                 },
             ],
@@ -127,7 +127,7 @@ mod tests {
         let message_type = MessageType {
             columns: vec![Column {
                 column_name: "Something".to_owned(),
-                column_type: ColumnType::String,
+                column_type: DBType::String,
                 dependencies: vec![],
             }],
         };
@@ -154,6 +154,50 @@ mod tests {
 
         {
             let paged_storage = PagedStorage::new(path, 4096usize, 3usize).unwrap();
+
+            let retrieved_messages: Vec<Message> = object_storage.iter(&paged_storage).collect();
+
+            assert_eq!(messages, retrieved_messages);
+        }
+
+        utility::cleanup(path);
+    }
+
+    #[test]
+    fn object_storage_another_big_test() {
+        let path = "temp_path6";
+        utility::cleanup(path);
+
+        let message_type = MessageType {
+            columns: vec![Column {
+                column_name: "Something".to_owned(),
+                column_type: DBType::String,
+                dependencies: vec![],
+            }],
+        };
+        let mut object_storage = ObjectStorage::new(message_type);
+
+        //the border between Real and Index in WrappedMessage is somewhere in this cycle
+        let messages: Vec<Message> = (0..4000usize)
+            .map(|_| Message {
+                fields: vec![Field::String(
+                    std::iter::repeat('a').take(8).collect::<String>(),
+                )],
+            })
+            .collect();
+
+        {
+            let mut paged_storage = PagedStorage::new(path, 8192usize, 3usize).unwrap();
+
+            object_storage
+                .insert_messages(&mut paged_storage, messages.clone().into_iter())
+                .unwrap();
+
+            paged_storage.flush().unwrap();
+        }
+
+        {
+            let paged_storage = PagedStorage::new(path, 8192usize, 3usize).unwrap();
 
             let retrieved_messages: Vec<Message> = object_storage.iter(&paged_storage).collect();
 
