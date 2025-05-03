@@ -22,11 +22,62 @@ mod tests {
     }
 
     #[test]
+    fn enum_matching_test() {
+        let enum_type = DBType::EnumType(EnumType {
+            name: "My_enum".to_owned(),
+            dependencies: vec![
+                ("a".to_owned(), DBType::UInt),
+            ],
+            variants: vec![
+                EnumVariantType {
+                    name: "First".to_owned(),
+                    content: vec! [],
+                },
+                EnumVariantType {
+                    name: "Second".to_owned(),
+                    content: vec! [
+                        ("value".to_owned(), DBType::Int)
+                    ],
+                },
+            ],
+        });
+
+        let first = DBValue::EnumValue(EnumValue {
+            dependencies: vec![DBValue::UInt(0u32)],
+            choice: 0usize,
+            values: vec![],
+        });
+        assert!(match_type_value(&enum_type, &first));
+
+        let second = DBValue::EnumValue(EnumValue {
+            dependencies: vec![DBValue::UInt(1u32)],
+            choice: 1usize,
+            values: vec![DBValue::Int(123i32)],
+        });
+        assert!(match_type_value(&enum_type, &second));
+
+        let third = DBValue::EnumValue(EnumValue {
+            dependencies: vec![DBValue::UInt(2u32)],
+            choice: 2usize,
+            values: vec![],
+        });
+        assert_eq!(false, match_type_value(&enum_type, &third));
+
+        let fourth = DBValue::EnumValue(EnumValue {
+            dependencies: vec![DBValue::UInt(2u32)],
+            choice: 0usize,
+            values: vec![DBValue::Bool(true)],
+        });
+        assert_eq!(false, match_type_value(&enum_type, &fourth));
+    }
+
+    #[test]
     fn object_storage_test() {
         let path = "temp_path4";
         utility::cleanup(path);
 
         let message_type = MessageType {
+            name: "Something".to_owned(),
             columns: vec![
                 Column {
                     column_name: "First".to_owned(),
@@ -50,23 +101,23 @@ mod tests {
         let messages = vec![
             Message {
                 fields: vec![
-                    Field::UInt(15u32),
-                    Field::Bool(true),
-                    Field::String("hello".to_owned()),
+                    DBValue::UInt(15u32),
+                    DBValue::Bool(true),
+                    DBValue::String("hello".to_owned()),
                 ],
             },
             Message {
                 fields: vec![
-                    Field::UInt(0u32),
-                    Field::Bool(false),
-                    Field::String("another".to_owned()),
+                    DBValue::UInt(0u32),
+                    DBValue::Bool(false),
+                    DBValue::String("another".to_owned()),
                 ],
             },
             Message {
                 fields: vec![
-                    Field::UInt(1337u32),
-                    Field::Bool(true),
-                    Field::String("something".to_owned()),
+                    DBValue::UInt(1337u32),
+                    DBValue::Bool(true),
+                    DBValue::String("something".to_owned()),
                 ],
             },
         ];
@@ -101,13 +152,13 @@ mod tests {
             let wrong_messages = vec![
                 Message {
                     fields: vec![
-                        Field::UInt(5u32),
-                        Field::Bool(false),
-                        Field::String("does not matter".to_owned()),
+                        DBValue::UInt(5u32),
+                        DBValue::Bool(false),
+                        DBValue::String("does not matter".to_owned()),
                     ],
                 },
                 Message {
-                    fields: vec![Field::Int(7i32)],
+                    fields: vec![DBValue::Int(7i32)],
                 },
             ];
 
@@ -125,6 +176,7 @@ mod tests {
         utility::cleanup(path);
 
         let message_type = MessageType {
+            name: "Something".to_owned(),
             columns: vec![Column {
                 column_name: "Something".to_owned(),
                 column_type: DBType::String,
@@ -136,7 +188,7 @@ mod tests {
         //the border between Real and Index in WrappedMessage is somewhere in this cycle
         let messages: Vec<Message> = (4900..5000usize)
             .map(|i| Message {
-                fields: vec![Field::String(
+                fields: vec![DBValue::String(
                     std::iter::repeat('a').take(i).collect::<String>(),
                 )],
             })
@@ -169,6 +221,7 @@ mod tests {
         utility::cleanup(path);
 
         let message_type = MessageType {
+            name: "Something".to_owned(),
             columns: vec![Column {
                 column_name: "Something".to_owned(),
                 column_type: DBType::String,
@@ -180,7 +233,7 @@ mod tests {
         //the border between Real and Index in WrappedMessage is somewhere in this cycle
         let messages: Vec<Message> = (0..4000usize)
             .map(|_| Message {
-                fields: vec![Field::String(
+                fields: vec![DBValue::String(
                     std::iter::repeat('a').take(8).collect::<String>(),
                 )],
             })

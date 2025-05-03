@@ -12,6 +12,7 @@ pub enum DBType {
     UInt,
     String,
     MessageType(MessageType),
+    EnumType(EnumType),
 }
 
 #[derive(PartialEq, Debug, Clone, Encode, Decode)]
@@ -24,22 +25,24 @@ pub struct Column {
 //Message constructor arguments are stored as columns
 #[derive(PartialEq, Debug, Clone, Encode, Decode)]
 pub struct MessageType {
+    pub name: String,
     pub columns: Vec<Column>,
 }
 
 #[derive(PartialEq, Debug, Clone, Encode, Decode)]
-pub enum Field {
+pub enum DBValue {
     Bool(bool),
     Double(f32),
     Int(i32),
     UInt(u32),
     String(String),
     Message(Message),
+    EnumValue(EnumValue),
 }
 
 #[derive(PartialEq, Debug, Clone, Encode, Decode)]
 pub struct Message {
-    pub fields: Vec<Field>,
+    pub fields: Vec<DBValue>,
 }
 
 impl MessageType {
@@ -51,17 +54,75 @@ impl MessageType {
         self.columns
             .iter()
             .zip(message.fields.iter())
-            .map(|(column, field)| match (&column.column_type, field) {
-                (DBType::Bool, Field::Bool(_)) => true,
-                (DBType::Double, Field::Double(_)) => true,
-                (DBType::Int, Field::Int(_)) => true,
-                (DBType::UInt, Field::UInt(_)) => true,
-                (DBType::String, Field::String(_)) => true,
-                (DBType::MessageType(message_type), Field::Message(message)) => {
-                    message_type.match_message(message)
-                }
-                (_, _) => false,
-            })
+            .map(|(column, field)| match_type_value(&column.column_type, field))
             .fold(true, |acc, x| acc & x)
+    }
+}
+
+#[derive(PartialEq, Debug, Clone, Encode, Decode)]
+pub struct EnumVariantType {
+    pub name: String,
+    //name, type
+    pub content: Vec<(String, DBType)>,
+}
+
+#[derive(PartialEq, Debug, Clone, Encode, Decode)]
+pub struct EnumType {
+    pub name: String,
+    //name, type
+    pub dependencies: Vec<(String, DBType)>,
+    pub variants: Vec<EnumVariantType>,
+}
+
+#[derive(PartialEq, Debug, Clone, Encode, Decode)]
+pub struct EnumValue {
+    pub dependencies: Vec<DBValue>,
+    pub choice: usize,
+    pub values: Vec<DBValue>,
+}
+
+impl EnumType {
+    pub fn match_enum(&self, enum_value: &EnumValue) -> bool {
+        if self.dependencies.len() != enum_value.dependencies.len() {
+            return false;
+        }
+
+        if !self.dependencies.iter()
+            .zip(enum_value.dependencies.iter())
+            .map(|(dep_type, dep_value)| match_type_value(&dep_type.1, dep_value))
+            .fold(true, |acc, x| acc & x) {
+            return false;
+        }
+
+        //invalid choice
+        if enum_value.choice >= self.variants.len() {
+            return false;
+        }
+
+        if self.variants[enum_value.choice].content.len() != enum_value.values.len() {
+            return false;
+        }
+
+        self.variants[enum_value.choice].content.iter()
+            .zip(enum_value.values.iter())
+            .map(|(db_type, db_value)| match_type_value(&db_type.1, db_value))
+            .fold(true, |acc, x| acc & x)
+    }
+}
+
+pub fn match_type_value(db_type: &DBType, db_value: &DBValue) -> bool {
+    match (db_type, db_value) {
+        (DBType::Bool, DBValue::Bool(_)) => true,
+        (DBType::Double, DBValue::Double(_)) => true,
+        (DBType::Int, DBValue::Int(_)) => true,
+        (DBType::UInt, DBValue::UInt(_)) => true,
+        (DBType::String, DBValue::String(_)) => true,
+        (DBType::MessageType(message_type), DBValue::Message(message)) => {
+            message_type.match_message(message)
+        }
+        (DBType::EnumType(enum_type), DBValue::EnumValue(enum_value)) => {
+            enum_type.match_enum(enum_value)
+        }
+        (_, _) => false,
     }
 }
