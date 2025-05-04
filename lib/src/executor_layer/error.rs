@@ -7,6 +7,12 @@ pub enum ExecutorError {
     #[error("Message type mismatch")]
     MessageTypeMismatch,
 
+    #[error("Table already exists")]
+    TableAlreadyExists,
+
+    #[error("Table not found")]
+    TableNotFound,
+
     #[error("Underlying error: {0}")]
     StorageError(StorageError),
 }

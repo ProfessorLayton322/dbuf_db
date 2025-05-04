@@ -8,6 +8,7 @@ mod tests {
     use super::super::storage_layer::paged_storage::PagedStorage;
     use super::object_storage::ObjectStorage;
     use super::schema::*;
+    use super::table_manager::TableManager;
 
     pub mod utility {
         use std::process::Command;
@@ -252,6 +253,102 @@ mod tests {
             let retrieved_messages: Vec<Message> = object_storage.iter(&paged_storage).collect();
 
             assert_eq!(messages, retrieved_messages);
+        }
+
+        utility::cleanup(path);
+    }
+
+    #[test]
+    fn table_manager_test() {
+        let path = "temp_path7";
+        utility::cleanup(path);
+
+        let message_type = MessageType {
+            name: "Something".to_owned(),
+            columns: vec![
+                Column {
+                    column_name: "First".to_owned(),
+                    column_type: DBType::UInt,
+                    dependencies: vec![],
+                },
+                Column {
+                    column_name: "Second".to_owned(),
+                    column_type: DBType::Bool,
+                    dependencies: vec![],
+                },
+                Column {
+                    column_name: "Third".to_owned(),
+                    column_type: DBType::String,
+                    dependencies: vec![],
+                },
+            ],
+        };
+
+        let messages = vec![
+            Message {
+                fields: vec![
+                    DBValue::UInt(15u32),
+                    DBValue::Bool(true),
+                    DBValue::String("hello".to_owned()),
+                ],
+            },
+            Message {
+                fields: vec![
+                    DBValue::UInt(0u32),
+                    DBValue::Bool(false),
+                    DBValue::String("another".to_owned()),
+                ],
+            },
+            Message {
+                fields: vec![
+                    DBValue::UInt(1337u32),
+                    DBValue::Bool(true),
+                    DBValue::String("something".to_owned()),
+                ],
+            },
+        ];
+
+        {
+            let paged_storage = PagedStorage::new(path, 4096usize, 3usize).unwrap();
+            let mut table_manager = TableManager::new(paged_storage).unwrap();
+
+            table_manager
+                .create_table("First".to_owned(), message_type.clone())
+                .unwrap();
+            table_manager
+                .insert_messages("First".to_owned(), messages.clone().into_iter())
+                .unwrap();
+        }
+
+        {
+            let paged_storage = PagedStorage::new(path, 4096usize, 3usize).unwrap();
+            let mut table_manager = TableManager::new(paged_storage).unwrap();
+
+            let retrieved_messages: Vec<Message> =
+                table_manager.iter("First".to_owned()).unwrap().collect();
+            assert_eq!(messages, retrieved_messages);
+
+            table_manager.drop_table("First".to_owned()).unwrap();
+        }
+
+        {
+            let paged_storage = PagedStorage::new(path, 4096usize, 3usize).unwrap();
+            let table_manager = TableManager::new(paged_storage).unwrap();
+
+            assert!(table_manager.iter("First".to_owned()).is_err());
+            assert!(table_manager.iter("Unknown".to_owned()).is_err());
+        }
+
+        {
+            let paged_storage = PagedStorage::new(path, 4096usize, 3usize).unwrap();
+            let mut table_manager = TableManager::new(paged_storage).unwrap();
+
+            table_manager
+                .create_table("Second".to_owned(), message_type)
+                .unwrap();
+            let retrieved_messages: Vec<Message> =
+                table_manager.iter("Second".to_owned()).unwrap().collect();
+            assert_eq!(0usize, retrieved_messages.len());
         }
 
         utility::cleanup(path);
