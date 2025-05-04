@@ -1,5 +1,6 @@
 pub mod buffer_pool;
 pub mod error;
+pub mod indices;
 pub mod page;
 pub mod paged_storage;
 pub mod storage;

@@ -1,6 +1,7 @@
 pub mod error;
 pub mod object_storage;
 pub mod schema;
+pub mod table_manager;
 
 #[cfg(test)]
 mod tests {
@@ -25,19 +26,15 @@ mod tests {
     fn enum_matching_test() {
         let enum_type = DBType::EnumType(EnumType {
             name: "My_enum".to_owned(),
-            dependencies: vec![
-                ("a".to_owned(), DBType::UInt),
-            ],
+            dependencies: vec![("a".to_owned(), DBType::UInt)],
             variants: vec![
                 EnumVariantType {
                     name: "First".to_owned(),
-                    content: vec! [],
+                    content: vec![],
                 },
                 EnumVariantType {
                     name: "Second".to_owned(),
-                    content: vec! [
-                        ("value".to_owned(), DBType::Int)
-                    ],
+                    content: vec![("value".to_owned(), DBType::Int)],
                 },
             ],
         });

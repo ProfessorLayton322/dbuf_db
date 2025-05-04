@@ -8,7 +8,8 @@ use super::page::{Page, PageHeader, PageId, PageType};
 use super::utils::{load, save};
 
 pub const DEFAULT_PAGE: PageId = 100;
-const STATE_INDEX: PageId = 0;
+
+use super::indices::STORAGE_STATE_INDEX;
 
 #[derive(Debug, Encode, Decode)]
 pub struct StorageState {
@@ -31,7 +32,7 @@ impl Storage {
     pub fn new<P: AsRef<Path>>(path: P, page_size: usize) -> Result<Self, StorageError> {
         let marble = marble::open(path)?;
 
-        if let Some(state) = load(&marble, STATE_INDEX)? {
+        if let Some(state) = load(&marble, STORAGE_STATE_INDEX)? {
             return Ok(Self { marble, state });
         }
 
@@ -41,13 +42,13 @@ impl Storage {
             free_ids: std::collections::VecDeque::<PageId>::new(),
         };
 
-        save(&marble, &state, STATE_INDEX)?;
+        save(&marble, &state, STORAGE_STATE_INDEX)?;
 
         Ok(Self { marble, state })
     }
 
     fn save_state(&self) -> Result<(), StorageError> {
-        save(&self.marble, &self.state, STATE_INDEX)?;
+        save(&self.marble, &self.state, STORAGE_STATE_INDEX)?;
         Ok(())
     }
 
@@ -91,7 +92,7 @@ impl Storage {
         let page_id = self.state.next_page_id;
         self.state.next_page_id += 1;
 
-        save(&self.marble, &self.state, STATE_INDEX)?;
+        save(&self.marble, &self.state, STORAGE_STATE_INDEX)?;
 
         let header = PageHeader {
             id: page_id,

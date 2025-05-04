@@ -13,7 +13,7 @@ use bincode::{Decode, Encode};
 
 // We can not store mutable reference to paged storage in every ObjectStorage since there will be
 // multiple of those, one for each table
-#[derive(Debug)]
+#[derive(Debug, Encode, Decode)]
 pub struct ObjectStorage {
     schema: MessageType,
     pages: Vec<PageId>,

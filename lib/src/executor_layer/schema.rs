@@ -87,10 +87,13 @@ impl EnumType {
             return false;
         }
 
-        if !self.dependencies.iter()
+        if !self
+            .dependencies
+            .iter()
             .zip(enum_value.dependencies.iter())
             .map(|(dep_type, dep_value)| match_type_value(&dep_type.1, dep_value))
-            .fold(true, |acc, x| acc & x) {
+            .fold(true, |acc, x| acc & x)
+        {
             return false;
         }
 
@@ -103,7 +106,9 @@ impl EnumType {
             return false;
         }
 
-        self.variants[enum_value.choice].content.iter()
+        self.variants[enum_value.choice]
+            .content
+            .iter()
             .zip(enum_value.values.iter())
             .map(|(db_type, db_value)| match_type_value(&db_type.1, db_value))
             .fold(true, |acc, x| acc & x)
