@@ -18,11 +18,14 @@ pub enum Expression {
 }
 
 impl Expression {
-    pub fn evaluate(&self, message: Message) -> DBValue {
+    pub fn evaluate(&self, message: &Message) -> DBValue {
         match self {
             Expression::Literal(value) => value.clone(),
             Expression::ColumnRef(index) => message.fields[*index].clone(),
-            _ => panic!("LOL"),
+            Expression::BinaryOp { op, left, right } => {
+                op.apply(left.evaluate(message), right.evaluate(message))
+            }
+            Expression::UnaryOp { op, expr } => op.apply(expr.evaluate(message)),
         }
     }
 }
@@ -96,8 +99,30 @@ impl BinaryOperator {
     }
 }
 
+//TODO add matching for enums
 #[derive(Debug, Clone)]
 pub enum UnaryOperator {
-    Negate, // -
-    Not,    // NOT
+    Negate,              // -
+    Not,                 // NOT
+    MessageField(usize), // foo.bar
+}
+
+impl UnaryOperator {
+    pub fn apply(&self, value: DBValue) -> DBValue {
+        match self {
+            UnaryOperator::Negate => match value {
+                DBValue::Int(x) => DBValue::Int(-x),
+                DBValue::Double(x) => DBValue::Double(-x),
+                _ => panic!("Incorrect negation"),
+            },
+            UnaryOperator::Not => match value {
+                DBValue::Bool(x) => DBValue::Bool(!x),
+                _ => panic!("Incorrect logical not"),
+            },
+            UnaryOperator::MessageField(index) => match value {
+                DBValue::Message(message) => message.fields[*index].clone(),
+                _ => panic!("Incorrect message field ref"),
+            },
+        }
+    }
 }

@@ -7,7 +7,10 @@ pub mod table_manager;
 
 #[cfg(test)]
 mod tests {
+    use std::boxed::Box;
+
     use super::super::storage_layer::paged_storage::PagedStorage;
+    use super::expression::{BinaryOperator, Expression, UnaryOperator};
     use super::object_storage::ObjectStorage;
     use super::schema::*;
     use super::table_manager::TableManager;
@@ -23,6 +26,60 @@ mod tests {
                 .output()
                 .unwrap();
         }
+    }
+
+    #[test]
+    fn expressions_test() {
+        let first = Expression::BinaryOp {
+            op: BinaryOperator::Add,
+            left: Box::new(Expression::Literal(DBValue::UInt(1u32))),
+            right: Box::new(Expression::Literal(DBValue::UInt(2u32))),
+        };
+
+        let empty_message = Message { fields: vec![] };
+
+        assert_eq!(first.evaluate(&empty_message), DBValue::UInt(3u32));
+
+        let a = Message {
+            fields: vec![
+                DBValue::UInt(10u32),
+                DBValue::UInt(3u32),
+                DBValue::Bool(true),
+                DBValue::String("Hello world".to_owned()),
+                DBValue::Message(Message {
+                    fields: vec![DBValue::String("Goodbye".to_owned())],
+                }),
+            ],
+        };
+
+        let second = Expression::BinaryOp {
+            op: BinaryOperator::GreaterThan,
+            left: Box::new(Expression::ColumnRef(0usize)),
+            right: Box::new(Expression::ColumnRef(1usize)),
+        };
+        assert_eq!(second.evaluate(&a), DBValue::Bool(true));
+
+        let third = Expression::ColumnRef(3usize);
+        assert_eq!(
+            third.evaluate(&a),
+            DBValue::String("Hello world".to_owned())
+        );
+
+        let fourth = Expression::BinaryOp {
+            op: BinaryOperator::Equals,
+            left: Box::new(Expression::ColumnRef(3usize)),
+            right: Box::new(Expression::UnaryOp {
+                op: UnaryOperator::MessageField(0usize),
+                expr: Box::new(Expression::ColumnRef(4usize)),
+            }),
+        };
+        assert_eq!(fourth.evaluate(&a), DBValue::Bool(false));
+
+        let fifth = Expression::UnaryOp {
+            op: UnaryOperator::Not,
+            expr: Box::new(Expression::ColumnRef(2usize)),
+        };
+        assert_eq!(fifth.evaluate(&a), DBValue::Bool(false));
     }
 
     #[test]
