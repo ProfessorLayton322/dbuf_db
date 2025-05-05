@@ -15,7 +15,7 @@ use bincode::{Decode, Encode};
 // multiple of those, one for each table
 #[derive(Debug, Encode, Decode)]
 pub struct ObjectStorage {
-    schema: MessageType,
+    pub schema: MessageType,
     pages: Vec<PageId>,
     //these pages will need to be freed if the table is dropped
     overflow_pages: Vec<PageId>,
@@ -31,7 +31,7 @@ pub enum WrappedMessage {
     Index(PageId),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct MessageIterator<'a, 'b> {
     object_storage: &'a ObjectStorage,
     //we need to acces page ref directly here to avoid copying it's content every read
@@ -176,7 +176,7 @@ impl ObjectStorage {
         Ok(())
     }
 
-    pub fn iter(&self, paged_storage: &PagedStorage) -> impl Iterator<Item = Message> {
+    pub fn iter<'a, 'b>(&'a self, paged_storage: &'b PagedStorage) -> MessageIterator<'a, 'b> {
         MessageIterator {
             object_storage: &self,
             paged_storage,

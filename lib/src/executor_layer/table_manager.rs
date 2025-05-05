@@ -6,7 +6,7 @@ use super::super::storage_layer::{
     utils::{load, save},
 };
 use super::error::ExecutorError;
-use super::object_storage::ObjectStorage;
+use super::object_storage::{MessageIterator, ObjectStorage};
 use super::schema::{Message, MessageType};
 
 use bincode::{Decode, Encode};
@@ -62,6 +62,13 @@ impl TableManager {
         Ok(())
     }
 
+    pub fn schema(&self, table_name: String) -> Result<MessageType, ExecutorError> {
+        match self.state.tables.get(&table_name) {
+            Some(object_storage) => Ok(object_storage.schema.clone()),
+            None => Err(ExecutorError::TableNotFound),
+        }
+    }
+
     pub fn drop_table(&mut self, table_name: String) -> Result<(), ExecutorError> {
         match self.state.tables.remove(&table_name) {
             Some(mut object_storage) => object_storage.drop_items(&mut self.paged_storage)?,
@@ -92,7 +99,7 @@ impl TableManager {
         Ok(())
     }
 
-    pub fn iter(&self, table_name: String) -> Result<impl Iterator<Item = Message>, ExecutorError> {
+    pub fn iter(&self, table_name: String) -> Result<MessageIterator, ExecutorError> {
         match self.state.tables.get(&table_name) {
             Some(object_storage) => Ok(object_storage.iter(&self.paged_storage)),
             None => return Err(ExecutorError::TableNotFound),

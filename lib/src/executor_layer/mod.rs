@@ -1,5 +1,6 @@
 pub mod error;
 pub mod object_storage;
+mod operator;
 pub mod schema;
 pub mod table_manager;
 
