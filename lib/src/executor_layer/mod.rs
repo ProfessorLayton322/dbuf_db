@@ -80,6 +80,39 @@ mod tests {
             expr: Box::new(Expression::ColumnRef(2usize)),
         };
         assert_eq!(fifth.evaluate(&a), DBValue::Bool(false));
+
+        let b = Message {
+            fields: vec![DBValue::EnumValue(EnumValue {
+                dependencies: vec![],
+                choice: 0usize,
+                values: vec![DBValue::String("First option".to_owned())],
+            })],
+        };
+
+        let c = Message {
+            fields: vec![DBValue::EnumValue(EnumValue {
+                dependencies: vec![],
+                choice: 1usize,
+                values: vec![DBValue::UInt(3u32)],
+            })],
+        };
+
+        let sixth = Expression::UnaryOp {
+            op: UnaryOperator::EnumMatch(vec![
+                Expression::ColumnRef(0usize),
+                Expression::Literal(DBValue::String("Second option".to_owned())),
+            ]),
+            expr: Box::new(Expression::ColumnRef(0usize)),
+        };
+
+        assert_eq!(
+            sixth.evaluate(&b),
+            DBValue::String("First option".to_owned())
+        );
+        assert_eq!(
+            sixth.evaluate(&c),
+            DBValue::String("Second option".to_owned())
+        );
     }
 
     #[test]

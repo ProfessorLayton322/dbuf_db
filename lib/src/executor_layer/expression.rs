@@ -102,9 +102,10 @@ impl BinaryOperator {
 //TODO add matching for enums
 #[derive(Debug, Clone)]
 pub enum UnaryOperator {
-    Negate,              // -
-    Not,                 // NOT
-    MessageField(usize), // foo.bar
+    Negate,                     // -
+    Not,                        // NOT
+    MessageField(usize),        // foo.bar
+    EnumMatch(Vec<Expression>), // match enum, foo => bar, lol => kek etc
 }
 
 impl UnaryOperator {
@@ -122,6 +123,14 @@ impl UnaryOperator {
             UnaryOperator::MessageField(index) => match value {
                 DBValue::Message(message) => message.fields[*index].clone(),
                 _ => panic!("Incorrect message field ref"),
+            },
+            UnaryOperator::EnumMatch(expressions) => match value {
+                DBValue::EnumValue(enum_value) => {
+                    expressions[enum_value.choice].evaluate(&Message {
+                        fields: enum_value.values.clone(),
+                    })
+                }
+                _ => panic!("Incorrect enum matching"),
             },
         }
     }
