@@ -2,6 +2,7 @@ use std::iter::Iterator;
 use std::ops::DerefMut;
 
 use super::error::ExecutorError;
+use super::expression::Expression;
 use super::object_storage::MessageIterator;
 use super::schema::Message;
 use super::table_manager::TableManager;
@@ -35,23 +36,17 @@ impl PhysicalOperator for TableScan<'_> {
 
 pub struct Projection {
     //Which columns to leave
-    columns: Vec<bool>,
+    expressions: Vec<Expression>,
     source: Box<dyn PhysicalOperator>,
 }
 
 impl Projection {
     pub fn project(&self, message: Message) -> Message {
         Message {
-            fields: message
-                .fields
-                .into_iter()
-                .zip(self.columns.iter())
-                .filter_map(|(field, status)| {
-                    if *status {
-                        return Some(field);
-                    }
-                    None
-                })
+            fields: self
+                .expressions
+                .iter()
+                .map(|expression| expression.evaluate(&message))
                 .collect(),
         }
     }
