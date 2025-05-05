@@ -4,7 +4,7 @@ use std::ops::DerefMut;
 use super::error::ExecutorError;
 use super::expression::Expression;
 use super::object_storage::MessageIterator;
-use super::schema::Message;
+use super::schema::{DBValue, Message};
 use super::table_manager::TableManager;
 
 //At this stage we assume all physical operators are correctly planned by the query planner
@@ -35,7 +35,6 @@ impl PhysicalOperator for TableScan<'_> {
 }
 
 pub struct Projection {
-    //Which columns to leave
     expressions: Vec<Expression>,
     source: Box<dyn PhysicalOperator>,
 }
@@ -64,6 +63,32 @@ impl Iterator for Projection {
 }
 
 impl PhysicalOperator for Projection {
+    fn open(&mut self) -> Result<(), ExecutorError> {
+        self.source.deref_mut().open()
+    }
+}
+
+struct Filter {
+    //the expression must always return DBValue::Bool
+    filter_expr: Expression,
+    source: Box<dyn PhysicalOperator>,
+}
+
+impl Iterator for Filter {
+    type Item = Message;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        //cant use filter here bc it consumes the iterator
+        while let Some(message) = self.source.deref_mut().next() {
+            if self.filter_expr.evaluate(&message) == DBValue::Bool(true) {
+                return Some(message);
+            }
+        }
+        None
+    }
+}
+
+impl PhysicalOperator for Filter {
     fn open(&mut self) -> Result<(), ExecutorError> {
         self.source.deref_mut().open()
     }
