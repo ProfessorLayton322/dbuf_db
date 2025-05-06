@@ -2,6 +2,7 @@ pub mod error;
 pub mod expression;
 pub mod object_storage;
 pub mod operator;
+pub mod physical_plan;
 pub mod schema;
 pub mod table_manager;
 
@@ -10,8 +11,11 @@ mod tests {
     use std::boxed::Box;
 
     use super::super::storage_layer::paged_storage::PagedStorage;
+    use super::expression::*;
     use super::expression::{BinaryOperator, Expression, UnaryOperator};
     use super::object_storage::ObjectStorage;
+    use super::operator::*;
+    use super::physical_plan::PhysicalPlan;
     use super::schema::*;
     use super::table_manager::TableManager;
 
@@ -442,6 +446,129 @@ mod tests {
                 table_manager.iter("Second".to_owned()).unwrap().collect();
             assert_eq!(0usize, retrieved_messages.len());
         }
+
+        utility::cleanup(path);
+    }
+
+    #[test]
+    fn physical_plan_test() {
+        let path = "temp_path8";
+        utility::cleanup(path);
+
+        let message_type = MessageType {
+            name: "Something".to_owned(),
+            columns: vec![
+                Column {
+                    column_name: "First".to_owned(),
+                    column_type: DBType::UInt,
+                    dependencies: vec![],
+                },
+                Column {
+                    column_name: "Second".to_owned(),
+                    column_type: DBType::Bool,
+                    dependencies: vec![],
+                },
+                Column {
+                    column_name: "Third".to_owned(),
+                    column_type: DBType::String,
+                    dependencies: vec![],
+                },
+            ],
+        };
+
+        let messages = vec![
+            Message {
+                fields: vec![
+                    DBValue::UInt(15u32),
+                    DBValue::Bool(true),
+                    DBValue::String("hello".to_owned()),
+                ],
+            },
+            Message {
+                fields: vec![
+                    DBValue::UInt(0u32),
+                    DBValue::Bool(false),
+                    DBValue::String("another".to_owned()),
+                ],
+            },
+            Message {
+                fields: vec![
+                    DBValue::UInt(1337u32),
+                    DBValue::Bool(false),
+                    DBValue::String("something".to_owned()),
+                ],
+            },
+            Message {
+                fields: vec![
+                    DBValue::UInt(250u32),
+                    DBValue::Bool(false),
+                    DBValue::String("string".to_owned()),
+                ],
+            },
+        ];
+
+        let expected = vec![
+            Message {
+                fields: vec![DBValue::String("hello".to_owned()), DBValue::UInt(17u32)],
+            },
+            Message {
+                fields: vec![
+                    DBValue::String("something".to_owned()),
+                    DBValue::UInt(1339u32),
+                ],
+            },
+            Message {
+                fields: vec![DBValue::String("string".to_owned()), DBValue::UInt(252u32)],
+            },
+        ];
+
+        let paged_storage = PagedStorage::new(path, 4096usize, 3usize).unwrap();
+        let mut table_manager = TableManager::new(paged_storage).unwrap();
+
+        table_manager
+            .create_table("First".to_owned(), message_type)
+            .unwrap();
+
+        table_manager
+            .insert_messages("First".to_owned(), messages.clone().into_iter())
+            .unwrap();
+
+        let table_scan = TableScan::new(&table_manager, "First".to_owned());
+
+        let filter = Filter {
+            filter_expr: Expression::BinaryOp {
+                op: BinaryOperator::Or,
+                left: Box::new(Expression::ColumnRef(1usize)),
+                right: Box::new(Expression::BinaryOp {
+                    op: BinaryOperator::GreaterThan,
+                    left: Box::new(Expression::ColumnRef(0usize)),
+                    right: Box::new(Expression::Literal(DBValue::UInt(100u32))),
+                }),
+            },
+            source: Box::new(table_scan),
+        };
+
+        let projection = Projection {
+            expressions: vec![
+                Expression::ColumnRef(2usize),
+                Expression::BinaryOp {
+                    op: BinaryOperator::Add,
+                    left: Box::new(Expression::Literal(DBValue::UInt(2u32))),
+                    right: Box::new(Expression::ColumnRef(0usize)),
+                },
+            ],
+            source: Box::new(filter),
+        };
+
+        let mut physical_plan = PhysicalPlan {
+            root: Box::new(projection),
+        };
+
+        physical_plan.open().unwrap();
+
+        let retreived_messages: Vec<Message> = physical_plan.collect();
+
+        assert_eq!(retreived_messages, expected);
 
         utility::cleanup(path);
     }

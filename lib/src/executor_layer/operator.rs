@@ -19,6 +19,16 @@ pub struct TableScan<'a> {
     iterator: Option<MessageIterator<'a, 'a>>,
 }
 
+impl<'a> TableScan<'a> {
+    pub fn new(table_manager: &'a TableManager, table_name: String) -> Self {
+        Self {
+            table_manager,
+            table_name,
+            iterator: None,
+        }
+    }
+}
+
 impl Iterator for TableScan<'_> {
     type Item = Message;
 
@@ -34,12 +44,12 @@ impl PhysicalOperator for TableScan<'_> {
     }
 }
 
-pub struct Projection {
-    expressions: Vec<Expression>,
-    source: Box<dyn PhysicalOperator>,
+pub struct Projection<'a> {
+    pub expressions: Vec<Expression>,
+    pub source: Box<dyn PhysicalOperator + 'a>,
 }
 
-impl Projection {
+impl Projection<'_> {
     pub fn project(&self, message: Message) -> Message {
         Message {
             fields: self
@@ -51,7 +61,7 @@ impl Projection {
     }
 }
 
-impl Iterator for Projection {
+impl Iterator for Projection<'_> {
     type Item = Message;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -62,19 +72,19 @@ impl Iterator for Projection {
     }
 }
 
-impl PhysicalOperator for Projection {
+impl PhysicalOperator for Projection<'_> {
     fn open(&mut self) -> Result<(), ExecutorError> {
         self.source.deref_mut().open()
     }
 }
 
-struct Filter {
+pub struct Filter<'a> {
     //the expression must always return DBValue::Bool
-    filter_expr: Expression,
-    source: Box<dyn PhysicalOperator>,
+    pub filter_expr: Expression,
+    pub source: Box<dyn PhysicalOperator + 'a>,
 }
 
-impl Iterator for Filter {
+impl Iterator for Filter<'_> {
     type Item = Message;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -88,8 +98,11 @@ impl Iterator for Filter {
     }
 }
 
-impl PhysicalOperator for Filter {
+impl PhysicalOperator for Filter<'_> {
     fn open(&mut self) -> Result<(), ExecutorError> {
         self.source.deref_mut().open()
     }
 }
+
+//TODO order by, group by, join
+//TODO set union
