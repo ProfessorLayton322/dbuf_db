@@ -70,7 +70,7 @@ impl Storage {
         self.state.next_page_id += 1;
 
         self.save_state()?;
-        return Ok(id);
+        Ok(id)
     }
 
     pub fn free_id(&mut self, id: PageId) -> Result<(), StorageError> {

@@ -41,7 +41,7 @@ pub struct MessageIterator<'a, 'b> {
     page_obj_count: usize,
 }
 
-impl<'a, 'b> Iterator for MessageIterator<'a, 'b> {
+impl Iterator for MessageIterator<'_, '_> {
     type Item = Message;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -138,7 +138,7 @@ impl ObjectStorage {
         paged_storage: &mut PagedStorage,
         messages: T,
     ) -> Result<(), ExecutorError> {
-        if self.pages.len() == 0usize {
+        if self.pages.is_empty() {
             self.add_page(paged_storage)?;
         }
 
@@ -148,7 +148,7 @@ impl ObjectStorage {
             }
 
             let encoded = self.wrap_and_encode(message.clone(), paged_storage.storage_mut())?;
-            if let Err(_) = self.try_push(paged_storage, &encoded) {
+            if self.try_push(paged_storage, &encoded).is_err() {
                 self.add_page(paged_storage)?;
                 //If this panics set bigger page_size
                 self.try_push(paged_storage, &encoded).unwrap();
@@ -178,7 +178,7 @@ impl ObjectStorage {
 
     pub fn iter<'a, 'b>(&'a self, paged_storage: &'b PagedStorage) -> MessageIterator<'a, 'b> {
         MessageIterator {
-            object_storage: &self,
+            object_storage: self,
             paged_storage,
             page_index: 0usize,
             page_offset: 0usize,

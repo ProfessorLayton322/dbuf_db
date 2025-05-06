@@ -33,7 +33,7 @@ impl Iterator for TableScan<'_> {
     type Item = Message;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iterator.as_mut().map(|iter| iter.next()).flatten()
+        self.iterator.as_mut().and_then(|iter| iter.next())
     }
 }
 

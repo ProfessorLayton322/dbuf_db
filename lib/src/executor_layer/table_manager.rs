@@ -11,17 +11,9 @@ use super::schema::{Message, MessageType};
 
 use bincode::{Decode, Encode};
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Debug, Encode, Decode, Default)]
 pub struct TableManagerState {
     pub tables: HashMap<String, ObjectStorage>,
-}
-
-impl TableManagerState {
-    pub fn new() -> Self {
-        Self {
-            tables: HashMap::<String, ObjectStorage>::new(),
-        }
-    }
 }
 
 pub struct TableManager {
@@ -37,7 +29,7 @@ impl TableManager {
                 paged_storage,
             }),
             None => Ok(Self {
-                state: TableManagerState::new(),
+                state: TableManagerState::default(),
                 paged_storage,
             }),
         }
@@ -102,7 +94,7 @@ impl TableManager {
     pub fn iter(&self, table_name: String) -> Result<MessageIterator, ExecutorError> {
         match self.state.tables.get(&table_name) {
             Some(object_storage) => Ok(object_storage.iter(&self.paged_storage)),
-            None => return Err(ExecutorError::TableNotFound),
+            None => Err(ExecutorError::TableNotFound),
         }
     }
 

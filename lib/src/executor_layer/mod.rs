@@ -11,7 +11,6 @@ mod tests {
     use std::boxed::Box;
 
     use super::super::storage_layer::paged_storage::PagedStorage;
-    use super::expression::*;
     use super::expression::{BinaryOperator, Expression, UnaryOperator};
     use super::object_storage::ObjectStorage;
     use super::operator::*;

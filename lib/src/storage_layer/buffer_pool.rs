@@ -66,22 +66,22 @@ impl BufferPool {
         }
 
         // If all are dirty, flush one
-        if evict_id.is_none() {
-            if let Some((&page_id, _)) = pages.iter().next() {
-                let (page, _) = pages.remove(&page_id).unwrap();
-                self.storage.write_page(&page)?;
-            }
+        if let Some(id) = evict_id {
+            pages.remove(&id);
+        } else if let Some((&page_id, _)) = pages.iter().next() {
+            let (page, _) = pages.remove(&page_id).unwrap();
+            self.storage.write_page(&page)?;
         } else {
-            pages.remove(&evict_id.unwrap());
+            panic!("Buffer pool is empty");
         }
 
         Ok(())
     }
 
-    pub fn allocate_page<'a>(
-        &'a mut self,
+    pub fn allocate_page(
+        &mut self,
         page_type: PageType,
-    ) -> Result<RefMut<'a, (Page, bool)>, StorageError> {
+    ) -> Result<RefMut<'_, (Page, bool)>, StorageError> {
         let page = self.storage.allocate_page(page_type)?;
 
         if self.pages.borrow().len() >= self.capacity {
@@ -117,10 +117,7 @@ impl BufferPool {
     }
 
     /// Get mut ref to page from the cache or load it from storage
-    pub fn get_page_mut<'a>(
-        &'a mut self,
-        id: PageId,
-    ) -> Result<RefMut<'a, (Page, bool)>, StorageError> {
+    pub fn get_page_mut(&mut self, id: PageId) -> Result<RefMut<'_, (Page, bool)>, StorageError> {
         self.bump_page(id)?;
 
         let pages = self.pages.borrow_mut();
@@ -128,7 +125,7 @@ impl BufferPool {
         Ok(RefMut::map(pages, |p| p.get_mut(&id).unwrap()))
     }
 
-    pub fn get_page<'a>(&'a self, id: PageId) -> Result<Ref<'a, (Page, bool)>, StorageError> {
+    pub fn get_page(&self, id: PageId) -> Result<Ref<'_, (Page, bool)>, StorageError> {
         self.bump_page(id)?;
 
         let pages = self.pages.borrow();
