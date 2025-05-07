@@ -42,6 +42,8 @@ pub enum DBValue {
 
 #[derive(PartialEq, Debug, Clone, Encode, Decode)]
 pub struct Message {
+    //Should be not None for literals only
+    pub type_name: Option<String>,
     pub fields: Vec<DBValue>,
 }
 
@@ -75,6 +77,8 @@ pub struct EnumType {
 
 #[derive(PartialEq, Debug, Clone, Encode, Decode)]
 pub struct EnumValue {
+    //only for enum literals
+    pub type_name: Option<String>,
     pub dependencies: Vec<DBValue>,
     pub choice: usize,
     pub values: Vec<DBValue>,

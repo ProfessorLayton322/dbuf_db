@@ -52,6 +52,7 @@ pub struct Projection<'a> {
 impl Projection<'_> {
     pub fn project(&self, message: Message) -> Message {
         Message {
+            type_name: None,
             fields: self
                 .expressions
                 .iter()

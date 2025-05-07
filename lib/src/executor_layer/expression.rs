@@ -127,6 +127,7 @@ impl UnaryOperator {
             UnaryOperator::EnumMatch(expressions) => match value {
                 DBValue::EnumValue(enum_value) => {
                     expressions[enum_value.choice].evaluate(&Message {
+                        type_name: None,
                         fields: enum_value.values.clone(),
                     })
                 }
