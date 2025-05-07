@@ -54,8 +54,7 @@ impl MessageType {
         self.columns
             .iter()
             .zip(message.fields.iter())
-            .map(|(column, field)| match_type_value(&column.column_type, field))
-            .fold(true, |acc, x| acc & x)
+            .all(|(column, field)| match_type_value(&column.column_type, field))
     }
 }
 
@@ -83,35 +82,19 @@ pub struct EnumValue {
 
 impl EnumType {
     pub fn match_enum(&self, enum_value: &EnumValue) -> bool {
-        if self.dependencies.len() != enum_value.dependencies.len() {
-            return false;
-        }
-
-        if !self
-            .dependencies
-            .iter()
-            .zip(enum_value.dependencies.iter())
-            .map(|(dep_type, dep_value)| match_type_value(&dep_type.1, dep_value))
-            .fold(true, |acc, x| acc & x)
-        {
-            return false;
-        }
-
-        //invalid choice
-        if enum_value.choice >= self.variants.len() {
-            return false;
-        }
-
-        if self.variants[enum_value.choice].content.len() != enum_value.values.len() {
-            return false;
-        }
-
-        self.variants[enum_value.choice]
-            .content
-            .iter()
-            .zip(enum_value.values.iter())
-            .map(|(db_type, db_value)| match_type_value(&db_type.1, db_value))
-            .fold(true, |acc, x| acc & x)
+        self.dependencies.len() == enum_value.dependencies.len()
+            && self
+                .dependencies
+                .iter()
+                .zip(enum_value.dependencies.iter())
+                .all(|(dep_type, dep_value)| match_type_value(&dep_type.1, dep_value))
+            && enum_value.choice < self.variants.len()
+            && self.variants[enum_value.choice].content.len() == enum_value.values.len()
+            && self.variants[enum_value.choice]
+                .content
+                .iter()
+                .zip(enum_value.values.iter())
+                .all(|(db_type, db_value)| match_type_value(&db_type.1, db_value))
     }
 }
 
