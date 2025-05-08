@@ -30,7 +30,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum BinaryOperator {
     Add,         // +
     Subtract,    // -

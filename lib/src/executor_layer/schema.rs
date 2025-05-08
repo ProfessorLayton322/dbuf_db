@@ -1,3 +1,4 @@
+use std::convert::From;
 use std::string::String;
 use std::vec::Vec;
 
@@ -65,6 +66,23 @@ pub struct EnumVariantType {
     pub name: String,
     //name, type
     pub content: Vec<(String, DBType)>,
+}
+
+impl From<&EnumVariantType> for MessageType {
+    fn from(variant_type: &EnumVariantType) -> Self {
+        Self {
+            name: variant_type.name.clone(),
+            columns: variant_type
+                .content
+                .iter()
+                .map(|(column_name, field_type)| Column {
+                    column_name: column_name.clone(),
+                    column_type: field_type.clone(),
+                    dependencies: vec![],
+                })
+                .collect(),
+        }
+    }
 }
 
 #[derive(PartialEq, Debug, Clone, Encode, Decode)]
