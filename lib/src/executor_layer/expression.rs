@@ -2,7 +2,7 @@ use std::boxed::Box;
 
 use super::schema::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Literal(DBValue),
     ColumnRef(usize),
@@ -30,7 +30,7 @@ impl Expression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BinaryOperator {
     Add,         // +
     Subtract,    // -
@@ -99,8 +99,7 @@ impl BinaryOperator {
     }
 }
 
-//TODO add matching for enums
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
     Negate,                     // -
     Not,                        // NOT
@@ -127,6 +126,7 @@ impl UnaryOperator {
             UnaryOperator::EnumMatch(expressions) => match value {
                 DBValue::EnumValue(enum_value) => {
                     expressions[enum_value.choice].evaluate(&Message {
+                        type_name: None,
                         fields: enum_value.values.clone(),
                     })
                 }

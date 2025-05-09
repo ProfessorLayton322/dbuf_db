@@ -23,3 +23,9 @@ impl Iterator for PhysicalPlan<'_> {
         self.root.deref_mut().next()
     }
 }
+
+impl<'a> From<Box<dyn PhysicalOperator + 'a>> for PhysicalPlan<'a> {
+    fn from(value: Box<dyn PhysicalOperator + 'a>) -> Self {
+        Self { root: value }
+    }
+}
