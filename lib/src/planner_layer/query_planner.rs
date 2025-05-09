@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::ops::Deref;
 use std::string::String;
 
-use super::super::executor_layer::{expression::*, schema::*, table_manager::TableManager};
+use super::super::executor_layer::{
+    expression::*, operator::*, physical_plan::PhysicalPlan, schema::*, table_manager::TableManager,
+};
 use super::super::storage_layer::{
     indices::PLANNER_STATE_INDEX,
     utils::{load, save},
@@ -91,32 +93,6 @@ impl QueryPlanner {
         }
     }
 
-    //returns Some(column_index) only if expression is a chain of unary operators on top of a
-    //column ref
-    fn get_leaf_ref(expression: &Expression) -> Option<usize> {
-        match expression {
-            Expression::ColumnRef(column_index) => Some(*column_index),
-            Expression::UnaryOp { op: _, expr } => Self::get_leaf_ref(expr.deref()),
-            _ => None,
-        }
-    }
-
-    fn is_complex_type(db_type: &DBType) -> bool {
-        matches!(db_type, DBType::MessageType(_) | DBType::EnumType(_))
-    }
-
-    pub fn get_column_index(
-        column_name: &String,
-        message_type: &MessageType,
-    ) -> Result<usize, PlannerError> {
-        for i in 0usize..message_type.columns.len() {
-            if column_name == &message_type.columns[i].column_name {
-                return Ok(i);
-            }
-        }
-        Err(PlannerError::ColumnNotFound(column_name.clone()))
-    }
-
     pub fn build_expression(
         &self,
         raw_expression: &RawExpression,
@@ -191,6 +167,32 @@ impl QueryPlanner {
                 }
             }
         }
+    }
+
+    //returns Some(column_index) only if expression is a chain of unary operators on top of a
+    //column ref
+    fn get_leaf_ref(expression: &Expression) -> Option<usize> {
+        match expression {
+            Expression::ColumnRef(column_index) => Some(*column_index),
+            Expression::UnaryOp { op: _, expr } => Self::get_leaf_ref(expr.deref()),
+            _ => None,
+        }
+    }
+
+    fn is_complex_type(db_type: &DBType) -> bool {
+        matches!(db_type, DBType::MessageType(_) | DBType::EnumType(_))
+    }
+
+    pub fn get_column_index(
+        column_name: &String,
+        message_type: &MessageType,
+    ) -> Result<usize, PlannerError> {
+        for i in 0usize..message_type.columns.len() {
+            if column_name == &message_type.columns[i].column_name {
+                return Ok(i);
+            }
+        }
+        Err(PlannerError::ColumnNotFound(column_name.clone()))
     }
 
     pub fn build_logical_plan(&self, raw_plan: &RawPlan) -> Result<LogicalPlan, PlannerError> {
@@ -368,7 +370,7 @@ impl QueryPlanner {
                     || left_type == DBType::Int
                     || left_type == DBType::String
                 {
-                    return Ok(left_type);
+                    return Ok(DBType::Bool);
                 }
                 Err(PlannerError::WrongOperandTypes)
             }
