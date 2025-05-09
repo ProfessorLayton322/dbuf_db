@@ -3,7 +3,7 @@ use std::ops::Deref;
 use std::string::String;
 
 use super::super::executor_layer::{
-    expression::*, operator::*, physical_plan::PhysicalPlan, schema::*, table_manager::TableManager,
+    expression::*, operator::*, schema::*, table_manager::TableManager,
 };
 use super::super::storage_layer::{
     indices::PLANNER_STATE_INDEX,
@@ -193,6 +193,44 @@ impl QueryPlanner {
             }
         }
         Err(PlannerError::ColumnNotFound(column_name.clone()))
+    }
+
+    pub fn build_physical_plan(
+        &self,
+        logical_plan: &LogicalPlan,
+    ) -> Box<dyn PhysicalOperator + '_> {
+        match logical_plan {
+            LogicalPlan::Scan {
+                table_name,
+                message_type: _,
+            } => Box::new(TableScan {
+                table_manager: &self.table_manager,
+                table_name: table_name.clone(),
+                iterator: None,
+            }),
+            LogicalPlan::Filter {
+                expression,
+                source,
+                message_type: _,
+            } => {
+                let boxed = self.build_physical_plan(source.deref());
+                Box::new(Filter {
+                    filter_expr: expression.clone(),
+                    source: boxed,
+                })
+            }
+            LogicalPlan::Projection {
+                expressions,
+                source,
+                message_type: _,
+            } => {
+                let boxed = self.build_physical_plan(source.deref());
+                Box::new(Projection {
+                    expressions: expressions.iter().map(|expr| expr.1.clone()).collect(),
+                    source: boxed,
+                })
+            }
+        }
     }
 
     pub fn build_logical_plan(&self, raw_plan: &RawPlan) -> Result<LogicalPlan, PlannerError> {

@@ -6,6 +6,7 @@ use super::super::executor_layer::{expression::Expression, schema::*};
 
 use super::raw_expression::RawExpression;
 
+#[derive(Debug, PartialEq, Clone)]
 pub enum RawPlan {
     Scan {
         table_name: String,
@@ -20,6 +21,7 @@ pub enum RawPlan {
     },
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub enum LogicalPlan {
     Scan {
         table_name: String,

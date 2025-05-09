@@ -16,9 +16,9 @@ pub trait PhysicalOperator: Iterator<Item = Message> {
 }
 
 pub struct TableScan<'a> {
-    table_manager: &'a TableManager,
-    table_name: String,
-    iterator: Option<MessageIterator<'a, 'a>>,
+    pub table_manager: &'a TableManager,
+    pub table_name: String,
+    pub iterator: Option<MessageIterator<'a, 'a>>,
 }
 
 impl<'a> TableScan<'a> {

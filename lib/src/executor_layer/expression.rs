@@ -99,7 +99,6 @@ impl BinaryOperator {
     }
 }
 
-//TODO add matching for enums
 #[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOperator {
     Negate,                     // -
