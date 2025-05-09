@@ -102,11 +102,7 @@ impl QueryPlanner {
     }
 
     fn is_complex_type(db_type: &DBType) -> bool {
-        match db_type {
-            DBType::MessageType(_) => true,
-            DBType::EnumType(_) => true,
-            _ => false,
-        }
+        matches!(db_type, DBType::MessageType(_) | DBType::EnumType(_))
     }
 
     pub fn get_column_index(
@@ -156,15 +152,15 @@ impl QueryPlanner {
                         let deduced_type =
                             self.deduce_expression_type(&expression, message_type)?;
                         if let DBType::MessageType(message_type) = deduced_type {
-                            return Ok(Expression::UnaryOp {
+                            Ok(Expression::UnaryOp {
                                 op: UnaryOperator::MessageField(Self::get_column_index(
                                     field_name,
                                     &message_type,
                                 )?),
                                 expr: Box::new(expression),
-                            });
+                            })
                         } else {
-                            return Err(PlannerError::WrongOperandTypes);
+                            Err(PlannerError::WrongOperandTypes)
                         }
                     }
                     RawUnaryOperator::EnumMatch(raw_expressions) => {
@@ -189,7 +185,7 @@ impl QueryPlanner {
                                 expr: Box::new(expression),
                             })
                         } else {
-                            return Err(PlannerError::WrongOperandTypes);
+                            Err(PlannerError::WrongOperandTypes)
                         }
                     }
                 }
@@ -215,7 +211,7 @@ impl QueryPlanner {
                 LogicalPlan::Filter {
                     expression: expression.clone(),
                     source: boxed,
-                    message_type: message_type,
+                    message_type,
                 }
             }
             RawPlan::Projection {
@@ -249,7 +245,7 @@ impl QueryPlanner {
                 let mut types: Vec<DBType> = vec![];
                 let mut ref_map = HashMap::<usize, usize>::new();
 
-                for (expression, i) in expressions.iter().zip(0..expressions.len()) {
+                for (i, expression) in expressions.iter().enumerate() {
                     if let Expression::ColumnRef(index) = expression.1 {
                         ref_map.insert(index, i);
                     }
@@ -425,7 +421,7 @@ impl QueryPlanner {
                     let iter = expressions.iter().zip(enum_type.variants.iter()).map(
                         |(expression, variant)| {
                             let message_type: MessageType = variant.into();
-                            self.deduce_expression_type(&expression, &message_type)
+                            self.deduce_expression_type(expression, &message_type)
                         },
                     );
 

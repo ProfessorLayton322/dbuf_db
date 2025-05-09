@@ -1,7 +1,6 @@
 use std::string::String;
 
 use super::super::executor_layer::{expression::*, schema::*};
-use super::error::PlannerError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum RawExpression {
