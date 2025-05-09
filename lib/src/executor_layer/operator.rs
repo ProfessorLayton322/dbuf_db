@@ -7,6 +7,8 @@ use super::object_storage::MessageIterator;
 use super::schema::{DBValue, Message};
 use super::table_manager::TableManager;
 
+//TODO rewrite everything to Box<enum>
+
 //At this stage we assume all physical operators are correctly planned by the query planner
 pub trait PhysicalOperator: Iterator<Item = Message> {
     //The contract is to call open before calling next

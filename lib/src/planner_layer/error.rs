@@ -13,6 +13,9 @@ pub enum PlannerError {
     #[error("Empty match cases")]
     EmptyMatchCases,
 
+    #[error("Column not found: {0}")]
+    ColumnNotFound(String),
+
     #[error("Unexisting message type: {0}")]
     UnexistingMessageType(String),
 
@@ -25,7 +28,7 @@ pub enum PlannerError {
     #[error("Duplicate enum type: {0}")]
     DuplicateEnumType(String),
 
-    #[error("Dependency dropped")]
+    #[error("Dependency dropped by projection")]
     DependencyDropped,
 
     #[error("Underlying executor error: {0}")]
