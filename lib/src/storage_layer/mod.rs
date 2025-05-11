@@ -11,7 +11,6 @@ mod tests {
     pub mod utility {
         use std::process::Command;
 
-        #[cfg(test)]
         pub fn cleanup(path: &str) {
             Command::new("sh")
                 .arg("-c")

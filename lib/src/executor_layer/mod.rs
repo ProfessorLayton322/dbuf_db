@@ -21,7 +21,6 @@ mod tests {
     pub mod utility {
         use std::process::Command;
 
-        #[cfg(test)]
         pub fn cleanup(path: &str) {
             Command::new("sh")
                 .arg("-c")
@@ -93,7 +92,6 @@ mod tests {
             type_name: None,
             fields: vec![DBValue::EnumValue(EnumValue {
                 type_name: None,
-                dependencies: vec![],
                 choice: 0usize,
                 values: vec![DBValue::String("First option".to_owned())],
             })],
@@ -103,7 +101,6 @@ mod tests {
             type_name: None,
             fields: vec![DBValue::EnumValue(EnumValue {
                 type_name: None,
-                dependencies: vec![],
                 choice: 1usize,
                 values: vec![DBValue::UInt(3u32)],
             })],
@@ -131,7 +128,6 @@ mod tests {
     fn enum_matching_test() {
         let enum_type = DBType::EnumType(EnumType {
             name: "My_enum".to_owned(),
-            dependencies: vec![("a".to_owned(), DBType::UInt)],
             variants: vec![
                 EnumVariantType {
                     name: "First".to_owned(),
@@ -146,7 +142,6 @@ mod tests {
 
         let first = DBValue::EnumValue(EnumValue {
             type_name: None,
-            dependencies: vec![DBValue::UInt(0u32)],
             choice: 0usize,
             values: vec![],
         });
@@ -154,7 +149,6 @@ mod tests {
 
         let second = DBValue::EnumValue(EnumValue {
             type_name: None,
-            dependencies: vec![DBValue::UInt(1u32)],
             choice: 1usize,
             values: vec![DBValue::Int(123i32)],
         });
@@ -162,7 +156,6 @@ mod tests {
 
         let third = DBValue::EnumValue(EnumValue {
             type_name: None,
-            dependencies: vec![DBValue::UInt(2u32)],
             choice: 2usize,
             values: vec![],
         });
@@ -170,7 +163,6 @@ mod tests {
 
         let fourth = DBValue::EnumValue(EnumValue {
             type_name: None,
-            dependencies: vec![DBValue::UInt(2u32)],
             choice: 0usize,
             values: vec![DBValue::Bool(true)],
         });
