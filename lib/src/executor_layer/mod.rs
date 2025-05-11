@@ -21,7 +21,6 @@ mod tests {
     pub mod utility {
         use std::process::Command;
 
-        #[cfg(test)]
         pub fn cleanup(path: &str) {
             Command::new("sh")
                 .arg("-c")
@@ -39,17 +38,22 @@ mod tests {
             right: Box::new(Expression::Literal(DBValue::UInt(2u32))),
         };
 
-        let empty_message = Message { fields: vec![] };
+        let empty_message = Message {
+            type_name: None,
+            fields: vec![],
+        };
 
         assert_eq!(first.evaluate(&empty_message), DBValue::UInt(3u32));
 
         let a = Message {
+            type_name: None,
             fields: vec![
                 DBValue::UInt(10u32),
                 DBValue::UInt(3u32),
                 DBValue::Bool(true),
                 DBValue::String("Hello world".to_owned()),
                 DBValue::Message(Message {
+                    type_name: None,
                     fields: vec![DBValue::String("Goodbye".to_owned())],
                 }),
             ],
@@ -85,16 +89,18 @@ mod tests {
         assert_eq!(fifth.evaluate(&a), DBValue::Bool(false));
 
         let b = Message {
+            type_name: None,
             fields: vec![DBValue::EnumValue(EnumValue {
-                dependencies: vec![],
+                type_name: None,
                 choice: 0usize,
                 values: vec![DBValue::String("First option".to_owned())],
             })],
         };
 
         let c = Message {
+            type_name: None,
             fields: vec![DBValue::EnumValue(EnumValue {
-                dependencies: vec![],
+                type_name: None,
                 choice: 1usize,
                 values: vec![DBValue::UInt(3u32)],
             })],
@@ -122,7 +128,6 @@ mod tests {
     fn enum_matching_test() {
         let enum_type = DBType::EnumType(EnumType {
             name: "My_enum".to_owned(),
-            dependencies: vec![("a".to_owned(), DBType::UInt)],
             variants: vec![
                 EnumVariantType {
                     name: "First".to_owned(),
@@ -136,28 +141,28 @@ mod tests {
         });
 
         let first = DBValue::EnumValue(EnumValue {
-            dependencies: vec![DBValue::UInt(0u32)],
+            type_name: None,
             choice: 0usize,
             values: vec![],
         });
         assert!(match_type_value(&enum_type, &first));
 
         let second = DBValue::EnumValue(EnumValue {
-            dependencies: vec![DBValue::UInt(1u32)],
+            type_name: None,
             choice: 1usize,
             values: vec![DBValue::Int(123i32)],
         });
         assert!(match_type_value(&enum_type, &second));
 
         let third = DBValue::EnumValue(EnumValue {
-            dependencies: vec![DBValue::UInt(2u32)],
+            type_name: None,
             choice: 2usize,
             values: vec![],
         });
         assert_eq!(false, match_type_value(&enum_type, &third));
 
         let fourth = DBValue::EnumValue(EnumValue {
-            dependencies: vec![DBValue::UInt(2u32)],
+            type_name: None,
             choice: 0usize,
             values: vec![DBValue::Bool(true)],
         });
@@ -193,6 +198,7 @@ mod tests {
 
         let messages = vec![
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::UInt(15u32),
                     DBValue::Bool(true),
@@ -200,6 +206,7 @@ mod tests {
                 ],
             },
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::UInt(0u32),
                     DBValue::Bool(false),
@@ -207,6 +214,7 @@ mod tests {
                 ],
             },
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::UInt(1337u32),
                     DBValue::Bool(true),
@@ -244,6 +252,7 @@ mod tests {
 
             let wrong_messages = vec![
                 Message {
+                    type_name: None,
                     fields: vec![
                         DBValue::UInt(5u32),
                         DBValue::Bool(false),
@@ -251,6 +260,7 @@ mod tests {
                     ],
                 },
                 Message {
+                    type_name: None,
                     fields: vec![DBValue::Int(7i32)],
                 },
             ];
@@ -281,6 +291,7 @@ mod tests {
         //the border between Real and Index in WrappedMessage is somewhere in this cycle
         let messages: Vec<Message> = (4900..5000usize)
             .map(|i| Message {
+                type_name: None,
                 fields: vec![DBValue::String(
                     std::iter::repeat('a').take(i).collect::<String>(),
                 )],
@@ -326,6 +337,7 @@ mod tests {
         //the border between Real and Index in WrappedMessage is somewhere in this cycle
         let messages: Vec<Message> = (0..4000usize)
             .map(|_| Message {
+                type_name: None,
                 fields: vec![DBValue::String(
                     std::iter::repeat('a').take(8).collect::<String>(),
                 )],
@@ -381,6 +393,7 @@ mod tests {
 
         let messages = vec![
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::UInt(15u32),
                     DBValue::Bool(true),
@@ -388,6 +401,7 @@ mod tests {
                 ],
             },
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::UInt(0u32),
                     DBValue::Bool(false),
@@ -395,6 +409,7 @@ mod tests {
                 ],
             },
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::UInt(1337u32),
                     DBValue::Bool(true),
@@ -477,6 +492,7 @@ mod tests {
 
         let messages = vec![
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::UInt(15u32),
                     DBValue::Bool(true),
@@ -484,6 +500,7 @@ mod tests {
                 ],
             },
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::UInt(0u32),
                     DBValue::Bool(false),
@@ -491,6 +508,7 @@ mod tests {
                 ],
             },
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::UInt(1337u32),
                     DBValue::Bool(false),
@@ -498,6 +516,7 @@ mod tests {
                 ],
             },
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::UInt(250u32),
                     DBValue::Bool(false),
@@ -508,15 +527,18 @@ mod tests {
 
         let expected = vec![
             Message {
+                type_name: None,
                 fields: vec![DBValue::String("hello".to_owned()), DBValue::UInt(17u32)],
             },
             Message {
+                type_name: None,
                 fields: vec![
                     DBValue::String("something".to_owned()),
                     DBValue::UInt(1339u32),
                 ],
             },
             Message {
+                type_name: None,
                 fields: vec![DBValue::String("string".to_owned()), DBValue::UInt(252u32)],
             },
         ];

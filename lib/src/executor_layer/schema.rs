@@ -1,3 +1,4 @@
+use std::convert::From;
 use std::string::String;
 use std::vec::Vec;
 
@@ -42,6 +43,8 @@ pub enum DBValue {
 
 #[derive(PartialEq, Debug, Clone, Encode, Decode)]
 pub struct Message {
+    //Should be not None for literals only
+    pub type_name: Option<String>,
     pub fields: Vec<DBValue>,
 }
 
@@ -65,30 +68,41 @@ pub struct EnumVariantType {
     pub content: Vec<(String, DBType)>,
 }
 
+impl From<&EnumVariantType> for MessageType {
+    fn from(variant_type: &EnumVariantType) -> Self {
+        Self {
+            name: variant_type.name.clone(),
+            columns: variant_type
+                .content
+                .iter()
+                .map(|(column_name, field_type)| Column {
+                    column_name: column_name.clone(),
+                    column_type: field_type.clone(),
+                    dependencies: vec![],
+                })
+                .collect(),
+        }
+    }
+}
+
 #[derive(PartialEq, Debug, Clone, Encode, Decode)]
 pub struct EnumType {
     pub name: String,
     //name, type
-    pub dependencies: Vec<(String, DBType)>,
     pub variants: Vec<EnumVariantType>,
 }
 
 #[derive(PartialEq, Debug, Clone, Encode, Decode)]
 pub struct EnumValue {
-    pub dependencies: Vec<DBValue>,
+    //only for enum literals
+    pub type_name: Option<String>,
     pub choice: usize,
     pub values: Vec<DBValue>,
 }
 
 impl EnumType {
     pub fn match_enum(&self, enum_value: &EnumValue) -> bool {
-        self.dependencies.len() == enum_value.dependencies.len()
-            && self
-                .dependencies
-                .iter()
-                .zip(enum_value.dependencies.iter())
-                .all(|(dep_type, dep_value)| match_type_value(&dep_type.1, dep_value))
-            && enum_value.choice < self.variants.len()
+        enum_value.choice < self.variants.len()
             && self.variants[enum_value.choice].content.len() == enum_value.values.len()
             && self.variants[enum_value.choice]
                 .content

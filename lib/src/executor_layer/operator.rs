@@ -7,6 +7,8 @@ use super::object_storage::MessageIterator;
 use super::schema::{DBValue, Message};
 use super::table_manager::TableManager;
 
+//TODO rewrite everything to Box<enum>
+
 //At this stage we assume all physical operators are correctly planned by the query planner
 pub trait PhysicalOperator: Iterator<Item = Message> {
     //The contract is to call open before calling next
@@ -14,9 +16,9 @@ pub trait PhysicalOperator: Iterator<Item = Message> {
 }
 
 pub struct TableScan<'a> {
-    table_manager: &'a TableManager,
-    table_name: String,
-    iterator: Option<MessageIterator<'a, 'a>>,
+    pub table_manager: &'a TableManager,
+    pub table_name: String,
+    pub iterator: Option<MessageIterator<'a, 'a>>,
 }
 
 impl<'a> TableScan<'a> {
@@ -52,6 +54,7 @@ pub struct Projection<'a> {
 impl Projection<'_> {
     pub fn project(&self, message: Message) -> Message {
         Message {
+            type_name: None,
             fields: self
                 .expressions
                 .iter()
