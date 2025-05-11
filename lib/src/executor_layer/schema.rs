@@ -89,7 +89,6 @@ impl From<&EnumVariantType> for MessageType {
 pub struct EnumType {
     pub name: String,
     //name, type
-    pub dependencies: Vec<(String, DBType)>,
     pub variants: Vec<EnumVariantType>,
 }
 
@@ -97,20 +96,13 @@ pub struct EnumType {
 pub struct EnumValue {
     //only for enum literals
     pub type_name: Option<String>,
-    pub dependencies: Vec<DBValue>,
     pub choice: usize,
     pub values: Vec<DBValue>,
 }
 
 impl EnumType {
     pub fn match_enum(&self, enum_value: &EnumValue) -> bool {
-        self.dependencies.len() == enum_value.dependencies.len()
-            && self
-                .dependencies
-                .iter()
-                .zip(enum_value.dependencies.iter())
-                .all(|(dep_type, dep_value)| match_type_value(&dep_type.1, dep_value))
-            && enum_value.choice < self.variants.len()
+        enum_value.choice < self.variants.len()
             && self.variants[enum_value.choice].content.len() == enum_value.values.len()
             && self.variants[enum_value.choice]
                 .content
