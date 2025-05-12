@@ -11,3 +11,7 @@ path = "lib/src/lib.rs"
 "marble" =  "16.0.2"
 bincode = { version = "2.0.1", features = ["derive", "alloc"] }
 "thiserror" = "2.0.12"
+lalrpop-util = { version = "0.21.0", features = ["lexer", "unicode"] }
+
+[build-dependencies] # <-- We added this and everything after!
+lalrpop = "0.22.1"
