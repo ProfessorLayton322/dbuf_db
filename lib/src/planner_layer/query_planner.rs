@@ -5,6 +5,7 @@ use std::string::String;
 use super::super::executor_layer::{
     expression::*, operator::*, schema::*, table_manager::TableManager,
 };
+use super::super::parser_layer::ast;
 use super::super::storage_layer::{
     indices::PLANNER_STATE_INDEX,
     utils::{load, save},
@@ -90,6 +91,158 @@ impl QueryPlanner {
         match self.state.enum_types.get(type_name) {
             Some(enum_type) => Ok(enum_type.clone()),
             None => Err(PlannerError::UnexistingEnumType(type_name.clone())),
+        }
+    }
+
+    pub fn from_parsed_value(&self, parsed_value: &ast::Value) -> Result<DBValue, PlannerError> {
+        match parsed_value {
+            ast::Value::Int(i) => Ok(DBValue::Int(*i)),
+            ast::Value::Double(f) => Ok(DBValue::Double(*f)),
+            ast::Value::String(s) => Ok(DBValue::String(s.clone())),
+            ast::Value::Bool(b) => Ok(DBValue::Bool(*b)),
+            ast::Value::Message(m) => {
+                let message_type = self.get_message_type(&m.type_name)?;
+
+                let try_convert_fields: Result<Vec<DBValue>, PlannerError> =
+                    m.values.iter().map(|v| self.from_parsed_value(v)).collect();
+
+                let message = Message {
+                    type_name: Some(m.type_name.clone()),
+                    fields: try_convert_fields?,
+                };
+
+                if !message_type.match_message(&message) {
+                    return Err(PlannerError::MismatchedFieldTypes(m.type_name.clone()));
+                }
+
+                Ok(DBValue::Message(message))
+            }
+            ast::Value::Enum(e) => {
+                let enum_type = self.get_enum_type(&e.type_name)?;
+
+                let mut choice: Option<usize> = None;
+
+                for (i, variant) in enum_type.variants.iter().enumerate() {
+                    if variant.name == e.variant_name {
+                        choice = Some(i);
+                        break;
+                    }
+                }
+
+                if choice.is_none() {
+                    return Err(PlannerError::EnumVariantNotFound(
+                        e.type_name.clone(),
+                        e.variant_name.clone(),
+                    ));
+                }
+
+                let choice = choice.unwrap();
+                let try_convert_fields: Result<Vec<DBValue>, PlannerError> =
+                    e.values.iter().map(|v| self.from_parsed_value(v)).collect();
+
+                let enum_value = EnumValue {
+                    type_name: Some(e.type_name.clone()),
+                    choice,
+                    values: try_convert_fields?,
+                };
+
+                if !enum_type.match_enum(&enum_value) {
+                    return Err(PlannerError::MismatchedFieldTypes(e.type_name.clone()));
+                }
+
+                Ok(DBValue::EnumValue(enum_value))
+            }
+        }
+    }
+
+    pub fn from_parsed_expression(
+        &self,
+        expr: &ast::Expression,
+    ) -> Result<RawExpression, PlannerError> {
+        match expr {
+            ast::Expression::Literal(value) => {
+                Ok(RawExpression::Literal(self.from_parsed_value(value)?))
+            }
+            ast::Expression::ColumnRef(column) => Ok(RawExpression::ColumnRef(column.clone())),
+            ast::Expression::BinaryOp { op, left, right } => {
+                let raw_left = self.from_parsed_expression(&left)?;
+                let raw_right = self.from_parsed_expression(&right)?;
+
+                let binop = match op {
+                    ast::BinaryOperator::Add => BinaryOperator::Add,
+                    ast::BinaryOperator::Subtract => BinaryOperator::Subtract,
+                    ast::BinaryOperator::Multiply => BinaryOperator::Multiply,
+                    ast::BinaryOperator::Divide => BinaryOperator::Divide,
+                    ast::BinaryOperator::Equals => BinaryOperator::Equals,
+                    ast::BinaryOperator::NotEquals => BinaryOperator::NotEquals,
+                    ast::BinaryOperator::LessThan => BinaryOperator::LessThan,
+                    ast::BinaryOperator::GreaterThan => BinaryOperator::GreaterThan,
+                    ast::BinaryOperator::And => BinaryOperator::And,
+                    ast::BinaryOperator::Or => BinaryOperator::Or,
+                };
+
+                Ok(RawExpression::BinaryOp {
+                    op: binop,
+                    left: Box::new(raw_left),
+                    right: Box::new(raw_right),
+                })
+            }
+            ast::Expression::UnaryOp { op, expr } => {
+                let unop = match op {
+                    ast::UnaryOperator::Negate => RawUnaryOperator::Negate,
+                    ast::UnaryOperator::Not => RawUnaryOperator::Not,
+                    ast::UnaryOperator::MessageField(field) => {
+                        RawUnaryOperator::MessageField(field.clone())
+                    }
+                    ast::UnaryOperator::EnumMatch(cases) => {
+                        if cases.is_empty() {
+                            return Err(PlannerError::EmptyMatchCases);
+                        };
+
+                        let enum_type_name = cases[0].0.split("::").next().unwrap();
+                        let enum_type = self.get_enum_type(&enum_type_name.to_owned())?;
+
+                        if enum_type.variants.len() != cases.len() {
+                            return Err(PlannerError::IllFormedMatchStatement);
+                        }
+
+                        let mut map = HashMap::<String, usize>::new();
+
+                        for (i, case) in cases.iter().enumerate() {
+                            let mut tokens = case.0.split("::");
+
+                            let type_name = tokens.next().unwrap().to_owned();
+                            if type_name != enum_type_name {
+                                return Err(PlannerError::IllFormedMatchStatement);
+                            }
+
+                            let variant_name = tokens.next().unwrap().to_owned();
+                            if map.contains_key(&variant_name) {
+                                return Err(PlannerError::IllFormedMatchStatement);
+                            }
+                            map.insert(variant_name, i);
+                        }
+
+                        let mut match_cases = Vec::<RawExpression>::new();
+                        for variant in enum_type.variants.iter() {
+                            if let Some(index) = map.get(&variant.name) {
+                                match_cases.push(self.from_parsed_expression(&cases[*index].1)?);
+                            } else {
+                                return Err(PlannerError::IllFormedMatchStatement);
+                            }
+                        }
+
+                        RawUnaryOperator::EnumMatch(match_cases)
+                    }
+                };
+
+                let raw_expr = self.from_parsed_expression(&expr)?;
+
+                Ok(RawExpression::UnaryOp {
+                    op: unop,
+                    expr: Box::new(raw_expr),
+                })
+            }
         }
     }
 

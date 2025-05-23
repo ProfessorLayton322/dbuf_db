@@ -22,6 +22,15 @@ pub enum PlannerError {
     #[error("Unexisting enum type: {0}")]
     UnexistingEnumType(String),
 
+    #[error("Mismatched field types for type: {0}")]
+    MismatchedFieldTypes(String),
+
+    #[error("Enum variant not found {0} {1}")]
+    EnumVariantNotFound(String, String),
+
+    #[error("Ill formed match statement")]
+    IllFormedMatchStatement,
+
     #[error("Duplicate message type: {0}")]
     DuplicateMessageType(String),
 

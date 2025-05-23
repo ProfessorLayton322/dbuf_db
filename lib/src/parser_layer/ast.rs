@@ -16,7 +16,7 @@ pub enum Query {
 
 #[derive(Debug, Clone)]
 pub enum Value {
-    Int(i64),
+    Int(i32),
     Double(f32),
     String(String),
     Bool(bool),

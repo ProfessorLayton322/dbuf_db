@@ -1,4 +1,4 @@
-use super::ast::{Expression, BinaryOperator, UnaryOperator};
+use super::ast::{BinaryOperator, Expression, UnaryOperator};
 
 pub fn bin_op(op: BinaryOperator, left: Expression, right: Expression) -> Expression {
     Expression::BinaryOp {
