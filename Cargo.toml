@@ -12,6 +12,7 @@ path = "lib/src/lib.rs"
 bincode = { version = "2.0.1", features = ["derive", "alloc"] }
 "thiserror" = "2.0.12"
 lalrpop-util = { version = "0.21.0", features = ["lexer", "unicode"] }
+dbuf-core = { git = "https://github.com/DependoBuf/dependobuf.git" }
 
 [build-dependencies]
 lalrpop = "0.21.0"

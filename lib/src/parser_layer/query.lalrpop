@@ -14,19 +14,19 @@ pub Query: Query = {
 };
 
 FetchTypesQuery: Query = {
-    "FETCH" "TYPES" <path:StringLit> => Query::FetchTypes(path),
+    "FETCH" "TYPES" <path:StringLit> ";" => Query::FetchTypes(path),
 };
 
 CreateTableQuery: Query = {
-    "CREATE" "TABLE" <table:Identifier> <table_type:Identifier> => Query::CreateTable(table, table_type),
+    "CREATE" "TABLE" <table:Identifier> <table_type:Identifier> ";" => Query::CreateTable(table, table_type),
 };
 
 DropTableQuery: Query = {
-    "DROP" "TABLE" <table:Identifier> => Query::DropTable(table),
+    "DROP" "TABLE" <table:Identifier> ";" => Query::DropTable(table),
 };
 
 InsertMessagesQuery: Query = {
-    "INSERT" "INTO" <table:Identifier> "VALUES" <messages:MessageList> => Query::InsertMessages {
+    "INSERT" "INTO" <table:Identifier> "VALUES" <messages:MessageList> ";" => Query::InsertMessages {
       table: table,
       messages: messages,
     },
@@ -35,7 +35,7 @@ InsertMessagesQuery: Query = {
 SelectQueryWithWhere: Query = {
     "SELECT" <fields:FieldWithAliasList>
     "FROM" <table:Identifier>
-    "WHERE" <condition:Expr>
+    "WHERE" <condition:Expr> ";"
     => Query::Select {
         table: table,
         fields: fields,
@@ -45,7 +45,7 @@ SelectQueryWithWhere: Query = {
 
 SelectQueryWithoutWhere: Query = {
     "SELECT" <fields:FieldWithAliasList>
-    "FROM" <table:Identifier>
+    "FROM" <table:Identifier> ";"
     => Query::Select {
         table: table,
         fields: fields,
@@ -69,7 +69,7 @@ FieldWithAlias: (Expression, String) = {
 };
 
 MessageList: Vec<Message> = {
-    "[" <messages:MessageListItems> "]" => messages
+    <messages:MessageListItems> => messages
 };
 
 MessageListItems: Vec<Message> = {

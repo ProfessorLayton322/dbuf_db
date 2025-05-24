@@ -1,0 +1,3 @@
+message Foo (n Int) {
+  bar Int;
+}
