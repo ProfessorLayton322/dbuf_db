@@ -17,6 +17,9 @@ pub enum ParsingError {
     #[error("Duplicate type name: {0}")]
     DuplicateTypeName(String),
 
+    #[error("Duplicate variant name: {0}")]
+    DuplicateVariantName(String),
+
     #[error("Field not found: {0}")]
     FieldNotFound(String),
 

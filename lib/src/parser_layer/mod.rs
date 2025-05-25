@@ -70,10 +70,14 @@ mod tests {
         }
     }
 
+    use dbuf_core::parser::parse;
+
     #[test]
     fn fetch_types_test() {
         let file = std::fs::read_to_string("sample_dbuf/user.dbuf").unwrap();
         let parsed = fetch_types::parse_types(file).unwrap();
-        //TODO check exact parsed value
+
+        //println!("{:#?}", parsed);
+        //assert_eq!(2 + 2, 5);
     }
 }

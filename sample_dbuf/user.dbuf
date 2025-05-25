@@ -6,3 +6,12 @@ message Foo (n Int) {
   bar Int;
   something Something n bar;
 }
+
+enum Lol {
+  A {
+    a Int;
+  }
+  B {
+    b Int;
+  }
+}

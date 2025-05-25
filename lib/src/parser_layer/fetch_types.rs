@@ -2,6 +2,7 @@ use dbuf_core::ast::parsed::*;
 use dbuf_core::parser::parse;
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 
 use super::super::executor_layer::schema::*;
 use super::error::*;
@@ -88,6 +89,48 @@ pub fn parse_types(data: String) -> Result<Vec<FetchedType>, ParsingError> {
 
             ans.push(FetchedType::MessageType(message_type));
         } else if let TypeDefinition::Enum(enum_branches) = &definition.body {
+            let mut enum_type = EnumType {
+                name: name.clone(),
+                variants: vec![],
+            };
+
+            let mut constructor_set = HashSet::<String>::new();
+
+            for enum_branch in enum_branches.iter() {
+                for constructor in enum_branch.constructors.iter() {
+                    let constructor_name = constructor.name.clone();
+
+                    if constructor_set.contains(&constructor_name) {
+                        return Err(ParsingError::DuplicateVariantName(constructor_name));
+                    }
+                    constructor_set.insert(constructor_name.clone());
+
+                    let mut fields = Vec::<(String, DBType)>::new();
+
+                    for definition in constructor.data.iter() {
+                        let field_name = definition.name.clone();
+
+                        if let ExpressionNode::FunCall { fun, args: _ } = &definition.data.node {
+                            if let Some(db_type) = type_cache.get(fun) {
+                                fields.push((field_name, db_type.clone()));
+                            } else {
+                                return Err(ParsingError::UnknownType(fun.clone()));
+                            }
+                        } else {
+                            return Err(ParsingError::CantDeduceFieldType(field_name));
+                        }
+                    }
+
+                    enum_type.variants.push(EnumVariantType {
+                        name: constructor_name,
+                        content: fields,
+                    });
+                }
+            }
+
+            type_cache.insert(name, DBType::EnumType(enum_type.clone()));
+
+            ans.push(FetchedType::EnumType(enum_type));
         }
     }
 
