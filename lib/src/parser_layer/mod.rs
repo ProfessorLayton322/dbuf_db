@@ -1,5 +1,7 @@
 pub mod ast;
 pub mod ast_helpers;
+pub mod error;
+pub mod fetch_types;
 
 use lalrpop_util::lalrpop_mod;
 lalrpop_mod!(pub query, "/parser_layer/query.rs");
@@ -68,13 +70,10 @@ mod tests {
         }
     }
 
-    use dbuf_core::parser::parse;
-
     #[test]
     fn fetch_types_test() {
         let file = std::fs::read_to_string("sample_dbuf/user.dbuf").unwrap();
-        let parsed = parse(&file).unwrap();
-        println!("{:#?}", parsed);
-        //assert_eq!(2 + 2, 5);
+        let parsed = fetch_types::parse_types(file).unwrap();
+        //TODO check exact parsed value
     }
 }
