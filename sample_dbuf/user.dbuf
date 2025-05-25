@@ -1,0 +1,12 @@
+enum Status {
+  Admin
+  User
+}
+
+message User {
+  name String;
+  surname String;
+  age Int;
+  year_of_birth Int;
+  status Status;
+}

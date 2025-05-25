@@ -1,0 +1,299 @@
+use std::str::FromStr;
+use super::ast::*;
+use super::ast_helpers::*;
+
+grammar;
+
+pub Query: Query = {
+    SelectQueryWithWhere,
+    SelectQueryWithoutWhere,
+    FetchTypesQuery,
+    CreateTableQuery,
+    DropTableQuery,
+    InsertMessagesQuery,
+};
+
+FetchTypesQuery: Query = {
+    "FETCH" "TYPES" <path:StringLit> ";" => Query::FetchTypes(path),
+};
+
+CreateTableQuery: Query = {
+    "CREATE" "TABLE" <table:Identifier> <table_type:Identifier> ";" => Query::CreateTable(table, table_type),
+};
+
+DropTableQuery: Query = {
+    "DROP" "TABLE" <table:Identifier> ";" => Query::DropTable(table),
+};
+
+InsertMessagesQuery: Query = {
+    "INSERT" "INTO" <table:Identifier> "VALUES" <messages:MessageList> ";" => Query::InsertMessages {
+      table: table,
+      messages: messages,
+    },
+};
+
+SelectQueryWithWhere: Query = {
+    "SELECT" <fields:FieldWithAliasList>
+    "FROM" <table:Identifier>
+    "WHERE" <condition:Expr> ";"
+    => Query::Select {
+        table: table,
+        fields: fields,
+        condition: Some(condition),
+    }
+};
+
+SelectQueryWithoutWhere: Query = {
+    "SELECT" <fields:FieldWithAliasList>
+    "FROM" <table:Identifier> ";"
+    => Query::Select {
+        table: table,
+        fields: fields,
+        condition: None,
+    }
+};
+
+FieldWithAliasList: Vec<(Expression, String)> = {
+    <head:FieldWithAlias> <tail:("," FieldWithAlias)*> => {
+        let mut items = vec![head];
+        for (_, item) in tail {
+            items.push(item);
+        }
+        items
+    }
+};
+
+FieldWithAlias: (Expression, String) = {
+    <expr:Expr> "AS" <alias:Identifier> => (expr, alias),
+    <col:Identifier> => (Expression::ColumnRef(col.clone()), col),
+};
+
+MessageList: Vec<Message> = {
+    <messages:MessageListItems> => messages
+};
+
+MessageListItems: Vec<Message> = {
+    <head:MessageLit> <tail:("," MessageLit)*> => {
+        let mut items = vec![head];
+        for (_, item) in tail {
+            items.push(item);
+        }
+        items
+    }
+};
+
+MessageLit: Message = {
+    "[" <type_name:Identifier> "{" <values:FieldValueList> "}" "]" => {
+        Message {
+            type_name: type_name,
+            values: values,
+        }
+    }
+};
+
+FieldValueList: Vec<Value> = {
+    => vec![],
+    <head:FieldValue> <tail:("," FieldValue)*> => {
+        let mut items = vec![head];
+        for (_, item) in tail {
+            items.push(item);
+        }
+        items
+    }
+};
+
+FieldValue: Value = {
+    <expr:Expr> => match expr {
+        Expression::Literal(v) => v,
+        _ => panic!("Non-literal in message field"),
+    },
+};
+
+EnumLit: Enum = {
+    "[" <type_name:Identifier> "::" <variant_name:Identifier> "{" <values:EnumValueList> "}" "]" => {
+        Enum {
+            type_name: type_name,
+            variant_name: variant_name,
+            values: values,
+        }
+    },
+    <type_name:Identifier> "::" <variant_name:Identifier> => {
+        Enum {
+            type_name: type_name,
+            variant_name: variant_name,
+            values: vec![],
+        }
+    }
+};
+
+EnumValueList: Vec<Value> = {
+    => vec![],
+    <head:EnumValue> <tail:("," EnumValue)*> => {
+        let mut items = vec![head];
+        for (_, item) in tail {
+            items.push(item);
+        }
+        items
+    }
+};
+
+EnumValue: Value = {
+    <num:Number> => Value::Int(num),
+    <float:Float> => Value::Double(float),
+    <str:StringLit> => Value::String(str),
+    <bool:Bool> => Value::Bool(bool),
+    <msg:MessageLit> => Value::Message(msg),
+    <enm:EnumLit> => Value::Enum(enm),
+};
+
+pub Expr: Expression = {
+    LogicalOrExpr,
+};
+
+LogicalOrExpr: Expression = {
+    <l:LogicalOrExpr> "||" <r:LogicalAndExpr> => Expression::BinaryOp {
+        op: BinaryOperator::Or,
+        left: Box::new(l),
+        right: Box::new(r),
+    },
+    LogicalAndExpr,
+};
+
+LogicalAndExpr: Expression = {
+    <l:LogicalAndExpr> "&&" <r:ComparisonExpr> => Expression::BinaryOp {
+        op: BinaryOperator::And,
+        left: Box::new(l),
+        right: Box::new(r),
+    },
+    ComparisonExpr,
+};
+
+ComparisonExpr: Expression = {
+    <l:AdditiveExpr> <op:ComparisonOp> <r:AdditiveExpr> => Expression::BinaryOp {
+        op: op,
+        left: Box::new(l),
+        right: Box::new(r),
+    },
+    AdditiveExpr,
+};
+
+AdditiveExpr: Expression = {
+    <l:AdditiveExpr> <op:AdditiveOp> <r:MultiplicativeExpr> => Expression::BinaryOp {
+        op: op,
+        left: Box::new(l),
+        right: Box::new(r),
+    },
+    MultiplicativeExpr,
+};
+
+MultiplicativeExpr: Expression = {
+    <l:MultiplicativeExpr> <op:MultiplicativeOp> <r:UnaryExpr> => Expression::BinaryOp {
+        op: op,
+        left: Box::new(l),
+        right: Box::new(r),
+    },
+    UnaryExpr,
+};
+
+UnaryExpr: Expression = {
+    <op:UnaryOp> <expr:UnaryExpr> => Expression::UnaryOp {
+        op: op,
+        expr: Box::new(expr),
+    },
+    PrimaryExpr,
+};
+
+PrimaryExpr: Expression = {
+    "(" <Expr> ")",
+    LiteralValue,
+    ColumnReference,
+    MessageAccess,
+    EnumMatch,
+};
+
+MessageAccess: Expression = {
+    <base:PrimaryExpr> "." <field:Identifier> => Expression::UnaryOp {
+        op: UnaryOperator::MessageField(field),
+        expr: Box::new(base),
+    },
+};
+
+EnumMatch: Expression = {
+    "MATCH" <target:Expr> "{" <cases:EnumCaseList> "}" => {
+        Expression::UnaryOp {
+            op: UnaryOperator::EnumMatch(cases),
+            expr: Box::new(target),
+        }
+    }
+};
+
+EnumCaseList: Vec<(String, Expression)> = {
+    <head:EnumCase> <tail:("," EnumCase)*> => {
+        let mut items = vec![head];
+        for (_, item) in tail {
+            items.push(item);
+        }
+        items
+    }
+};
+
+EnumCase: (String, Expression) = {
+    <enum_type:Identifier> "::" <variant:Identifier> "=>" <expr:Expr> =>
+        (format!("{}::{}", enum_type, variant), expr),
+};
+
+LiteralValue: Expression = {
+    <num:Number> => Expression::Literal(Value::Int(num)),
+    <float:Float> => Expression::Literal(Value::Double(float)),
+    <str:StringLit> => Expression::Literal(Value::String(str)),
+    <bool:Bool> => Expression::Literal(Value::Bool(bool)),
+    <msg:MessageLit> => Expression::Literal(Value::Message(msg)),
+    <enm:EnumLit> => Expression::Literal(Value::Enum(enm)),
+};
+
+ColumnReference: Expression = {
+    <ident:Identifier> => Expression::ColumnRef(ident),
+};
+
+StringLit: String = {
+    r#""[^"]*""# => <>.trim_matches('"').to_string()
+};
+
+Identifier: String = {
+    r"[a-zA-Z_][a-zA-Z0-9_]*" => <>.to_string()
+};
+
+Number: i32 = {
+    r"-?[0-9]+" => <>.parse().unwrap()
+};
+
+Float: f32 = {
+    r"-?[0-9]+\.[0-9]+" => <>.parse().unwrap()
+};
+
+Bool: bool = {
+    "true" => true,
+    "false" => false
+};
+
+ComparisonOp: BinaryOperator = {
+    "==" => BinaryOperator::Equals,
+    "!=" => BinaryOperator::NotEquals,
+    "<" => BinaryOperator::LessThan,
+    ">" => BinaryOperator::GreaterThan,
+};
+
+AdditiveOp: BinaryOperator = {
+    "+" => BinaryOperator::Add,
+    "-" => BinaryOperator::Subtract,
+};
+
+MultiplicativeOp: BinaryOperator = {
+    "*" => BinaryOperator::Multiply,
+    "/" => BinaryOperator::Divide,
+};
+
+UnaryOp: UnaryOperator = {
+    "!" => UnaryOperator::Not,
+    "-" => UnaryOperator::Negate,
+};
