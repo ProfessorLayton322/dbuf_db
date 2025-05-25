@@ -92,6 +92,7 @@ MessageLit: Message = {
 };
 
 FieldValueList: Vec<Value> = {
+    => vec![],
     <head:FieldValue> <tail:("," FieldValue)*> => {
         let mut items = vec![head];
         for (_, item) in tail {
@@ -126,6 +127,7 @@ EnumLit: Enum = {
 };
 
 EnumValueList: Vec<Value> = {
+    => vec![],
     <head:EnumValue> <tail:("," EnumValue)*> => {
         let mut items = vec![head];
         for (_, item) in tail {

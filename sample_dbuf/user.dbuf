@@ -1,17 +1,12 @@
-message Something (n Int) {
-  lol Int;
+enum Status {
+  Admin
+  User
 }
 
-message Foo (n Int) {
-  bar Int;
-  something Something n bar;
-}
-
-enum Lol {
-  A {
-    a Int;
-  }
-  B {
-    b Int;
-  }
+message User {
+  name String;
+  surname String;
+  age Int;
+  year_of_birth Int;
+  status Status;
 }

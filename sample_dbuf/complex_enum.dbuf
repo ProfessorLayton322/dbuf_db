@@ -1,0 +1,14 @@
+enum ComplexEnum {
+    First {
+        a Int;
+        b Int;
+    }
+    Second {
+        c Int;
+    }
+    Third
+}
+
+message EnumWrapper {
+    field ComplexEnum;
+}
